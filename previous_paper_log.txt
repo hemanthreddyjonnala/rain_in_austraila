@@ -1,0 +1,43 @@
+<class 'pandas.core.frame.DataFrame'>
+RangeIndex: 142193 entries, 0 to 142192
+Data columns (total 23 columns):
+Date             142193 non-null object
+Location         142193 non-null object
+MinTemp          141556 non-null float64
+MaxTemp          141871 non-null float64
+Rainfall         140787 non-null float64
+Evaporation      81350 non-null float64
+Sunshine         74377 non-null float64
+WindGustDir      132863 non-null object
+WindGustSpeed    132923 non-null float64
+WindDir9am       132180 non-null object
+WindDir3pm       138415 non-null object
+WindSpeed9am     140845 non-null float64
+WindSpeed3pm     139563 non-null float64
+Humidity9am      140419 non-null float64
+Humidity3pm      138583 non-null float64
+Pressure9am      128179 non-null float64
+Pressure3pm      128212 non-null float64
+Cloud9am         88536 non-null float64
+Cloud3pm         85099 non-null float64
+Temp9am          141289 non-null float64
+Temp3pm          139467 non-null float64
+RainToday        140787 non-null object
+RainTomorrow     142193 non-null object
+dtypes: float64(16), object(7)
+memory usage: 25.0+ MB
+/opt/conda/lib/python3.6/site-packages/sklearn/linear_model/logistic.py:432: FutureWarning: Default solver will be changed to 'lbfgs' in 0.22. Specify a solver to silence this warning.
+  FutureWarning)
+83.6394835297758
+1.2784056663513184
+80.50015471602576
+0.06317663192749023
+78.12034093786042
+1.633436918258667
+85.27103434695772
+29.68889355659485
+          ML Algorithm      Score       Time
+2        Random Forest  85.271034  29.688894
+1  Logistic Regression  83.639484   1.278406
+0          Naive Bayes  80.500155   0.063177
+3        Decision Tree  78.120341   1.633437

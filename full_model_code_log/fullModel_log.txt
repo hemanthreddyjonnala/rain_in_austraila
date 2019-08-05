@@ -1,0 +1,839 @@
+> if(!require(InformationValue)) install.packages("InformationValue")
+> if(!require(caTools)) install.packages("caTools")
+> if(!require(caret)) install.packages("caret")
+> if(!require(naivebayes)) install.packages("naivebayes")
+> if(!require(party)) install.packages("party")
+> if(!require(rpart.plot)) install.packages("rpart.plot")
+> if(!require(e1071)) install.packages("e1071")
+> if(!require(MLMetrics)) install.packages("MLMetrics")
+Loading required package: MLMetrics
+Installing package into ‘/home/rstudio-user/R/x86_64-pc-linux-gnu-library/3.6’
+(as ‘lib’ is unspecified)
+Warning in install.packages :
+  package ‘MLMetrics’ is not available (for R version 3.6.0)
+Warning in install.packages :
+  Perhaps you meant ‘MLmetrics’ ?
+Warning message:
+In library(package, lib.loc = lib.loc, character.only = TRUE, logical.return = TRUE,  :
+  there is no package called ‘MLMetrics’
+> if(!require(varhandle)) install.packages("varhandle")
+> if(!require(purrr)) install.packages("purrr")
+> if(!require(corrplot)) install.packages("corrplot")
+> if(!require(ggplot2)) install.packages("ggplot2")
+> if(!require(cowplot)) install.packages("cowplot")
+> 
+> 
+> library(readr)
+> library(dplyr)
+> library(party)
+> library(rpart)
+> library(rpart.plot)
+> library(ROCR)
+> library(caret)
+> 
+> 
+> setwd("/cloud/project")
+> getwd()
+[1] "/cloud/project"
+> 
+> # Import test data
+> weather_data = "weatherAUS.csv"
+> raw_data<- read.csv(weather_data)
+> 
+> head(raw_data)  # display the first 6 observations
+        Date Location MinTemp MaxTemp Rainfall Evaporation Sunshine WindGustDir
+1 2008-12-01   Albury    13.4    22.9      0.6          NA       NA           W
+2 2008-12-02   Albury     7.4    25.1      0.0          NA       NA         WNW
+3 2008-12-03   Albury    12.9    25.7      0.0          NA       NA         WSW
+4 2008-12-04   Albury     9.2    28.0      0.0          NA       NA          NE
+5 2008-12-05   Albury    17.5    32.3      1.0          NA       NA           W
+6 2008-12-06   Albury    14.6    29.7      0.2          NA       NA         WNW
+  WindGustSpeed WindDir9am WindDir3pm WindSpeed9am WindSpeed3pm Humidity9am
+1            44          W        WNW           20           24          71
+2            44        NNW        WSW            4           22          44
+3            46          W        WSW           19           26          38
+4            24         SE          E           11            9          45
+5            41        ENE         NW            7           20          82
+6            56          W          W           19           24          55
+  Humidity3pm Pressure9am Pressure3pm Cloud9am Cloud3pm Temp9am Temp3pm RainToday
+1          22      1007.7      1007.1        8       NA    16.9    21.8        No
+2          25      1010.6      1007.8       NA       NA    17.2    24.3        No
+3          30      1007.6      1008.7       NA        2    21.0    23.2        No
+4          16      1017.6      1012.8       NA       NA    18.1    26.5        No
+5          33      1010.8      1006.0        7        8    17.8    29.7        No
+6          23      1009.2      1005.4       NA       NA    20.6    28.9        No
+  RISK_MM RainTomorrow
+1     0.0           No
+2     0.0           No
+3     0.0           No
+4     1.0           No
+5     0.2           No
+6     0.0           No
+> print(summary(raw_data))
+         Date            Location         MinTemp         MaxTemp     
+ 2013-03-02:    49   Canberra:  3418   Min.   :-8.50   Min.   :-4.80  
+ 2013-03-03:    49   Sydney  :  3337   1st Qu.: 7.60   1st Qu.:17.90  
+ 2013-03-04:    49   Perth   :  3193   Median :12.00   Median :22.60  
+ 2013-03-06:    49   Darwin  :  3192   Mean   :12.19   Mean   :23.23  
+ 2013-03-07:    49   Hobart  :  3188   3rd Qu.:16.80   3rd Qu.:28.20  
+ 2013-03-10:    49   Brisbane:  3161   Max.   :33.90   Max.   :48.10  
+ (Other)   :141899   (Other) :122704   NA's   :637     NA's   :322    
+    Rainfall       Evaporation        Sunshine      WindGustDir    WindGustSpeed   
+ Min.   :  0.00   Min.   :  0.00   Min.   : 0.00   W      : 9780   Min.   :  6.00  
+ 1st Qu.:  0.00   1st Qu.:  2.60   1st Qu.: 4.90   SE     : 9309   1st Qu.: 31.00  
+ Median :  0.00   Median :  4.80   Median : 8.50   E      : 9071   Median : 39.00  
+ Mean   :  2.35   Mean   :  5.47   Mean   : 7.62   N      : 9033   Mean   : 39.98  
+ 3rd Qu.:  0.80   3rd Qu.:  7.40   3rd Qu.:10.60   SSE    : 8993   3rd Qu.: 48.00  
+ Max.   :371.00   Max.   :145.00   Max.   :14.50   (Other):86677   Max.   :135.00  
+ NA's   :1406     NA's   :60843    NA's   :67816   NA's   : 9330   NA's   :9270    
+   WindDir9am      WindDir3pm     WindSpeed9am   WindSpeed3pm    Humidity9am    
+ N      :11393   SE     :10663   Min.   :  0    Min.   : 0.00   Min.   :  0.00  
+ SE     : 9162   W      : 9911   1st Qu.:  7    1st Qu.:13.00   1st Qu.: 57.00  
+ E      : 9024   S      : 9598   Median : 13    Median :19.00   Median : 70.00  
+ SSE    : 8966   WSW    : 9329   Mean   : 14    Mean   :18.64   Mean   : 68.84  
+ NW     : 8552   SW     : 9182   3rd Qu.: 19    3rd Qu.:24.00   3rd Qu.: 83.00  
+ (Other):85083   (Other):89732   Max.   :130    Max.   :87.00   Max.   :100.00  
+ NA's   :10013   NA's   : 3778   NA's   :1348   NA's   :2630    NA's   :1774    
+  Humidity3pm      Pressure9am      Pressure3pm        Cloud9am        Cloud3pm    
+ Min.   :  0.00   Min.   : 980.5   Min.   : 977.1   Min.   :0.00    Min.   :0.0    
+ 1st Qu.: 37.00   1st Qu.:1012.9   1st Qu.:1010.4   1st Qu.:1.00    1st Qu.:2.0    
+ Median : 52.00   Median :1017.6   Median :1015.2   Median :5.00    Median :5.0    
+ Mean   : 51.48   Mean   :1017.7   Mean   :1015.3   Mean   :4.44    Mean   :4.5    
+ 3rd Qu.: 66.00   3rd Qu.:1022.4   3rd Qu.:1020.0   3rd Qu.:7.00    3rd Qu.:7.0    
+ Max.   :100.00   Max.   :1041.0   Max.   :1039.6   Max.   :9.00    Max.   :9.0    
+ NA's   :3610     NA's   :14014    NA's   :13981    NA's   :53657   NA's   :57094  
+    Temp9am         Temp3pm      RainToday        RISK_MM        RainTomorrow
+ Min.   :-7.20   Min.   :-5.40   No  :109332   Min.   :  0.000   No :110316  
+ 1st Qu.:12.30   1st Qu.:16.60   Yes : 31455   1st Qu.:  0.000   Yes: 31877  
+ Median :16.70   Median :21.10   NA's:  1406   Median :  0.000               
+ Mean   :16.99   Mean   :21.69                 Mean   :  2.361               
+ 3rd Qu.:21.60   3rd Qu.:26.40                 3rd Qu.:  0.800               
+ Max.   :40.20   Max.   :46.70                 Max.   :371.000               
+ NA's   :904     NA's   :2726                                                
+> 
+> # converting categrical data numeric data
+> objects <- c("Location", "WindGustDir", "WindDir9am", "WindDir3pm", "RainToday", "RainTomorrow")
+> for (obj in objects){
++   print(rev(levels(raw_data[[obj]])))
++   raw_data[[obj]]<- unclass(factor(raw_data[[obj]], levels=rev(levels(raw_data[[obj]]))))
++ }
+ [1] "Woomera"          "Wollongong"       "Witchcliffe"      "Williamtown"     
+ [5] "Watsonia"         "Walpole"          "WaggaWagga"       "Uluru"           
+ [9] "Tuggeranong"      "Townsville"       "SydneyAirport"    "Sydney"          
+[13] "SalmonGums"       "Sale"             "Richmond"         "Portland"        
+[17] "PerthAirport"     "Perth"            "Penrith"          "PearceRAAF"      
+[21] "Nuriootpa"        "NorfolkIsland"    "NorahHead"        "Nhil"            
+[25] "Newcastle"        "MountGinini"      "MountGambier"     "Moree"           
+[29] "Mildura"          "MelbourneAirport" "Melbourne"        "Launceston"      
+[33] "Katherine"        "Hobart"           "GoldCoast"        "Darwin"          
+[37] "Dartmoor"         "CoffsHarbour"     "Cobar"            "Canberra"        
+[41] "Cairns"           "Brisbane"         "Bendigo"          "Ballarat"        
+[45] "BadgerysCreek"    "AliceSprings"     "Albury"           "Albany"          
+[49] "Adelaide"        
+ [1] "WSW" "WNW" "W"   "SW"  "SSW" "SSE" "SE"  "S"   "NW"  "NNW" "NNE" "NE"  "N"  
+[14] "ESE" "ENE" "E"  
+ [1] "WSW" "WNW" "W"   "SW"  "SSW" "SSE" "SE"  "S"   "NW"  "NNW" "NNE" "NE"  "N"  
+[14] "ESE" "ENE" "E"  
+ [1] "WSW" "WNW" "W"   "SW"  "SSW" "SSE" "SE"  "S"   "NW"  "NNW" "NNE" "NE"  "N"  
+[14] "ESE" "ENE" "E"  
+[1] "Yes" "No" 
+[1] "Yes" "No" 
+> 
+> 
+> # replacing NA values with zero
+> data <- na.omit(raw_data)
+> drops <- c("Date","RISK_MM")
+> data <-data[ , !(names(data) %in% drops)]
+> 
+> 
+> #First, we convert rank to a factor to indicate that rank should be treated as a categorical variable.
+> data$RainToday[which(data$RainToday == 2)]<- 0 
+> data$RainTomorrow[which(data$RainTomorrow == 2)]<- 0 
+> data$Location <- factor(data$Location)
+> data$WindGustDir <- factor(data$WindGustDir)
+> data$WindDir9am <- factor(data$WindDir9am)
+> data$WindDir3pm <- factor(data$WindDir3pm)
+> data$RainToday <- factor(data$RainToday)
+> 
+> 
+> # Check distribution between the 2 binary classes
+> table(data$RainTomorrow)
+
+    0     1 
+43993 12427 
+> xtabs(~RainTomorrow + RainToday, data = data)
+            RainToday
+RainTomorrow     0     1
+           0 37274  6719
+           1  6684  5743
+> xtabs(~RainTomorrow + Location, data = data)
+            Location
+RainTomorrow    1    4    5    7   10   11   12   14   16   17   18   21   22   27
+           0 1605  878 2046 1989 2025 2155 1274 1319 1117 2360 2409 1619 1721 1733
+           1  129  320  684  427  394  715  416  359  746  553  616  389  743  732
+            Location
+RainTomorrow   28   29   30   31   34   36   38   39   40   41   42   46
+           0 1655 2305 2293 1427 1471 2273  949  471  859 1693 2311 2036
+           1  258  289  636  471  468  789  431   63  219  751  642  187
+> 
+> 
+> # Create Training Data
+> input_ones <- data[which(data$RainTomorrow == 1), ]  # all 1's
+> input_zeros <- data[which(data$RainToday == 0), ]  # all 0's
+> set.seed(123)  # for repeatability of samples
+> input_ones_training_rows <- sample(1:nrow(input_ones), 0.8*nrow(input_ones))  # 1's for training
+> input_zeros_training_rows <- sample(1:nrow(input_zeros), 0.8*nrow(input_ones))  # 0's for training. Pick as many 0's as 1's
+> training_ones <- input_ones[input_ones_training_rows, ]  
+> training_zeros <- input_zeros[input_zeros_training_rows, ]
+> trainingData <- rbind(training_ones, training_zeros)  # row bind the 1's and 0's 
+> 
+> # Create Test Data
+> test_ones <- input_ones[-input_ones_training_rows, ]
+> test_zeros <- input_zeros[-input_zeros_training_rows, ]
+> testData <- rbind(test_ones, test_zeros)  # row bind the 1's and 0's 
+##########################################################################
+> start_time <- Sys.time()
+> # apply logistic regression
+> logit <- glm(RainTomorrow ~ ., data=trainingData)  # build the model
+> summary(logit)
+
+Call:
+glm(formula = RainTomorrow ~ ., data = trainingData)
+
+Deviance Residuals: 
+     Min        1Q    Median        3Q       Max  
+-1.25780  -0.25424  -0.02839   0.26231   1.06031  
+
+Coefficients:
+                Estimate Std. Error t value Pr(>|t|)    
+(Intercept)    7.6863041  0.5073997  15.148  < 2e-16 ***
+Location4      0.1208686  0.0245917   4.915 8.95e-07 ***
+Location5      0.0498141  0.0208319   2.391 0.016801 *  
+Location7      0.0600624  0.0212039   2.833 0.004622 ** 
+Location10    -0.0396345  0.0232883  -1.702 0.088789 .  
+Location11     0.0278714  0.0207469   1.343 0.179157    
+Location12     0.0907360  0.0227849   3.982 6.85e-05 ***
+Location14     0.0068521  0.0232230   0.295 0.767953    
+Location16     0.0647862  0.0218751   2.962 0.003064 ** 
+Location17     0.0668935  0.0208329   3.211 0.001325 ** 
+Location18     0.0975584  0.0205737   4.742 2.13e-06 ***
+Location21     0.0339716  0.0218456   1.555 0.119943    
+Location22     0.0908224  0.0216485   4.195 2.74e-05 ***
+Location27     0.0437626  0.0209484   2.089 0.036714 *  
+Location28     0.0377988  0.0222974   1.695 0.090052 .  
+Location29     0.0367654  0.0210900   1.743 0.081303 .  
+Location30     0.0092255  0.0207697   0.444 0.656915    
+Location31     0.0293008  0.0219732   1.333 0.182391    
+Location34     0.0176842  0.0226251   0.782 0.434449    
+Location36    -0.0458272  0.0222456  -2.060 0.039406 *  
+Location38     0.1158349  0.0243358   4.760 1.95e-06 ***
+Location39     0.0430017  0.0324496   1.325 0.185125    
+Location40     0.0642540  0.0253520   2.534 0.011269 *  
+Location41     0.0608852  0.0229232   2.656 0.007913 ** 
+Location42     0.1114757  0.0220782   5.049 4.48e-07 ***
+Location46     0.0134167  0.0223191   0.601 0.547760    
+MinTemp        0.0020895  0.0014607   1.430 0.152601    
+MaxTemp        0.0014250  0.0022336   0.638 0.523503    
+Rainfall      -0.0023418  0.0003635  -6.442 1.20e-10 ***
+Evaporation   -0.0042091  0.0010995  -3.828 0.000129 ***
+Sunshine      -0.0245947  0.0012531 -19.626  < 2e-16 ***
+WindGustDir2  -0.0039006  0.0148051  -0.263 0.792196    
+WindGustDir3  -0.0101047  0.0133420  -0.757 0.448845    
+WindGustDir4  -0.0187052  0.0141402  -1.323 0.185905    
+WindGustDir5  -0.0071452  0.0147942  -0.483 0.629122    
+WindGustDir6  -0.0096677  0.0162030  -0.597 0.550740    
+WindGustDir7  -0.0238178  0.0161767  -1.472 0.140942    
+WindGustDir8  -0.0149072  0.0154993  -0.962 0.336161    
+WindGustDir9  -0.0005217  0.0157021  -0.033 0.973495    
+WindGustDir10 -0.0173628  0.0165449  -1.049 0.293993    
+WindGustDir11 -0.0519022  0.0166677  -3.114 0.001849 ** 
+WindGustDir12 -0.0719340  0.0163318  -4.405 1.07e-05 ***
+WindGustDir13 -0.0424995  0.0150939  -2.816 0.004872 ** 
+WindGustDir14 -0.0257022  0.0166043  -1.548 0.121657    
+WindGustDir15 -0.0746242  0.0160265  -4.656 3.24e-06 ***
+WindGustDir16 -0.0494781  0.0157860  -3.134 0.001725 ** 
+WindGustSpeed  0.0056468  0.0002941  19.199  < 2e-16 ***
+WindDir9am2   -0.0136136  0.0158868  -0.857 0.391505    
+WindDir9am3    0.0056823  0.0149043   0.381 0.703020    
+WindDir9am4   -0.0132596  0.0155218  -0.854 0.392971    
+WindDir9am5   -0.0231991  0.0163384  -1.420 0.155647    
+WindDir9am6   -0.0472461  0.0163777  -2.885 0.003921 ** 
+WindDir9am7   -0.0532805  0.0160163  -3.327 0.000881 ***
+WindDir9am8   -0.0697996  0.0161152  -4.331 1.49e-05 ***
+WindDir9am9   -0.0117387  0.0159247  -0.737 0.461046    
+WindDir9am10  -0.0066952  0.0159000  -0.421 0.673698    
+WindDir9am11   0.0404282  0.0159257   2.539 0.011139 *  
+WindDir9am12   0.0342741  0.0163142   2.101 0.035665 *  
+WindDir9am13   0.0081631  0.0148223   0.551 0.581823    
+WindDir9am14  -0.0433658  0.0166795  -2.600 0.009331 ** 
+WindDir9am15   0.0030417  0.0161268   0.189 0.850398    
+WindDir9am16  -0.0354668  0.0160093  -2.215 0.026745 *  
+WindDir3pm2    0.0666312  0.0147738   4.510 6.52e-06 ***
+WindDir3pm3    0.0219641  0.0137359   1.599 0.109830    
+WindDir3pm4   -0.0151683  0.0144679  -1.048 0.294462    
+WindDir3pm5    0.0154604  0.0154635   1.000 0.317419    
+WindDir3pm6    0.0230944  0.0162351   1.422 0.154899    
+WindDir3pm7    0.0509109  0.0160215   3.178 0.001487 ** 
+WindDir3pm8    0.0434260  0.0155472   2.793 0.005225 ** 
+WindDir3pm9    0.0611898  0.0158121   3.870 0.000109 ***
+WindDir3pm10   0.0834909  0.0161594   5.167 2.41e-07 ***
+WindDir3pm11   0.0625270  0.0170822   3.660 0.000253 ***
+WindDir3pm12   0.0462848  0.0167080   2.770 0.005607 ** 
+WindDir3pm13   0.0774307  0.0156930   4.934 8.12e-07 ***
+WindDir3pm14   0.0233738  0.0162210   1.441 0.149611    
+WindDir3pm15   0.0337594  0.0165152   2.044 0.040953 *  
+WindDir3pm16   0.0253830  0.0162616   1.561 0.118560    
+WindSpeed9am  -0.0011061  0.0004160  -2.659 0.007855 ** 
+WindSpeed3pm  -0.0007501  0.0004283  -1.751 0.079935 .  
+Humidity9am    0.0004491  0.0002969   1.512 0.130429    
+Humidity3pm    0.0054429  0.0003170  17.169  < 2e-16 ***
+Pressure9am    0.0109321  0.0017553   6.228 4.82e-10 ***
+Pressure3pm   -0.0186364  0.0017235 -10.813  < 2e-16 ***
+Cloud9am      -0.0054052  0.0014491  -3.730 0.000192 ***
+Cloud3pm       0.0271549  0.0015516  17.502  < 2e-16 ***
+Temp9am        0.0025458  0.0020944   1.216 0.224176    
+Temp3pm       -0.0008850  0.0024636  -0.359 0.719435    
+RainToday1     0.2809572  0.0082104  34.220  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for gaussian family taken to be 0.123609)
+
+    Null deviance: 4857.0  on 19881  degrees of freedom
+Residual deviance: 2446.7  on 19794  degrees of freedom
+AIC: 14947
+
+Number of Fisher Scoring iterations: 2
+
+> 
+> # CIs using standard errors
+> confint.default(logit)
+                      2.5 %        97.5 %
+(Intercept)    6.6918189229  8.680789e+00
+Location4      0.0726697446  1.690675e-01
+Location5      0.0089843811  9.064377e-02
+Location7      0.0185035030  1.016213e-01
+Location10    -0.0852788560  6.009767e-03
+Location11    -0.0127917453  6.853448e-02
+Location12     0.0460783120  1.353937e-01
+Location14    -0.0386640603  5.236826e-02
+Location16     0.0219118505  1.076606e-01
+Location17     0.0260618826  1.077252e-01
+Location18     0.0572346601  1.378822e-01
+Location21    -0.0088449662  7.678820e-02
+Location22     0.0483919916  1.332527e-01
+Location27     0.0027045006  8.482076e-02
+Location28    -0.0059033775  8.150100e-02
+Location29    -0.0045702313  7.810101e-02
+Location30    -0.0314823354  4.993342e-02
+Location31    -0.0137659619  7.236758e-02
+Location34    -0.0266602105  6.202854e-02
+Location36    -0.0894277978 -2.226610e-03
+Location38     0.0681375938  1.635322e-01
+Location39    -0.0205983106  1.066018e-01
+Location40     0.0145649191  1.139431e-01
+Location41     0.0159565446  1.058138e-01
+Location42     0.0682031133  1.547482e-01
+Location46    -0.0303279744  5.716136e-02
+MinTemp       -0.0007734544  4.952430e-03
+MaxTemp       -0.0029528384  5.802784e-03
+Rainfall      -0.0030542469 -1.629367e-03
+Evaporation   -0.0063640703 -2.054112e-03
+Sunshine      -0.0270507760 -2.213854e-02
+WindGustDir2  -0.0329180640  2.511684e-02
+WindGustDir3  -0.0362546024  1.604524e-02
+WindGustDir4  -0.0464195058  9.009098e-03
+WindGustDir5  -0.0361412119  2.185090e-02
+WindGustDir6  -0.0414250323  2.208960e-02
+WindGustDir7  -0.0555235121  7.887977e-03
+WindGustDir8  -0.0452853162  1.547083e-02
+WindGustDir9  -0.0312972506  3.025382e-02
+WindGustDir10 -0.0497902546  1.506475e-02
+WindGustDir11 -0.0845702110 -1.923420e-02
+WindGustDir12 -0.1039438089 -3.992427e-02
+WindGustDir13 -0.0720829284 -1.291609e-02
+WindGustDir14 -0.0582459501  6.841624e-03
+WindGustDir15 -0.1060356562 -4.321278e-02
+WindGustDir16 -0.0804181167 -1.853813e-02
+WindGustSpeed  0.0050703318  6.223238e-03
+WindDir9am2   -0.0447512274  1.752405e-02
+WindDir9am3   -0.0235295423  3.489410e-02
+WindDir9am4   -0.0436817295  1.716248e-02
+WindDir9am5   -0.0552217284  8.823478e-03
+WindDir9am6   -0.0793457519 -1.514643e-02
+WindDir9am7   -0.0846718714 -2.188912e-02
+WindDir9am8   -0.1013848869 -3.821433e-02
+WindDir9am9   -0.0429504760  1.947308e-02
+WindDir9am10  -0.0378587026  2.446821e-02
+WindDir9am11   0.0092144451  7.164189e-02
+WindDir9am12   0.0022988033  6.624940e-02
+WindDir9am13  -0.0208880002  3.721424e-02
+WindDir9am14  -0.0760570852 -1.067449e-02
+WindDir9am15  -0.0285661343  3.464958e-02
+WindDir9am16  -0.0668443999 -4.089122e-03
+WindDir3pm2    0.0376750809  9.558742e-02
+WindDir3pm3   -0.0049577299  4.888597e-02
+WindDir3pm4   -0.0435248504  1.318825e-02
+WindDir3pm5   -0.0148474518  4.576821e-02
+WindDir3pm6   -0.0087258781  5.491460e-02
+WindDir3pm7    0.0195094008  8.231244e-02
+WindDir3pm8    0.0129539463  7.389798e-02
+WindDir3pm9    0.0301987088  9.218084e-02
+WindDir3pm10   0.0518190033  1.151628e-01
+WindDir3pm11   0.0290464159  9.600751e-02
+WindDir3pm12   0.0135377422  7.903192e-02
+WindDir3pm13   0.0466730000  1.081884e-01
+WindDir3pm14  -0.0084186870  5.516633e-02
+WindDir3pm15   0.0013900919  6.612862e-02
+WindDir3pm16  -0.0064892042  5.725515e-02
+WindSpeed9am  -0.0019215107 -2.906329e-04
+WindSpeed3pm  -0.0015896113  8.944095e-05
+Humidity9am   -0.0001328599  1.030968e-03
+Humidity3pm    0.0048215552  6.064231e-03
+Pressure9am    0.0074917289  1.437247e-02
+Pressure3pm   -0.0220144762 -1.525831e-02
+Cloud9am      -0.0082452629 -2.565070e-03
+Cloud3pm       0.0241139115  3.019592e-02
+Temp9am       -0.0015591072  6.650670e-03
+Temp3pm       -0.0057136341  3.943659e-03
+RainToday1     0.2648650662  2.970494e-01
+> #To get the exponentiated coefficients, you tell R that you want to exponentiate (exp)
+> ## odds ratios only
+> exp(coef(logit))
+  (Intercept)     Location4     Location5     Location7    Location10    Location11 
+ 2178.3089389     1.1284766     1.0510757     1.0619028     0.9611406     1.0282634 
+   Location12    Location14    Location16    Location17    Location18    Location21 
+    1.0949799     1.0068756     1.0669309     1.0691816     1.1024758     1.0345552 
+   Location22    Location27    Location28    Location29    Location30    Location31 
+    1.0950744     1.0447343     1.0385223     1.0374496     1.0092682     1.0297343 
+   Location34    Location36    Location38    Location39    Location40    Location41 
+    1.0178415     0.9552070     1.1228105     1.0439397     1.0663632     1.0627769 
+   Location42    Location46       MinTemp       MaxTemp      Rainfall   Evaporation 
+    1.1179265     1.0135071     1.0020917     1.0014260     0.9976609     0.9957998 
+     Sunshine  WindGustDir2  WindGustDir3  WindGustDir4  WindGustDir5  WindGustDir6 
+    0.9757053     0.9961070     0.9899462     0.9814687     0.9928803     0.9903789 
+ WindGustDir7  WindGustDir8  WindGustDir9 WindGustDir10 WindGustDir11 WindGustDir12 
+    0.9764636     0.9852033     0.9994784     0.9827871     0.9494217     0.9305923 
+WindGustDir13 WindGustDir14 WindGustDir15 WindGustDir16 WindGustSpeed   WindDir9am2 
+    0.9583909     0.9746253     0.9280922     0.9517260     1.0056628     0.9864787 
+  WindDir9am3   WindDir9am4   WindDir9am5   WindDir9am6   WindDir9am7   WindDir9am8 
+    1.0056985     0.9868279     0.9770679     0.9538526     0.9481140     0.9325807 
+  WindDir9am9  WindDir9am10  WindDir9am11  WindDir9am12  WindDir9am13  WindDir9am14 
+    0.9883299     0.9933271     1.0412565     1.0348682     1.0081965     0.9575611 
+ WindDir9am15  WindDir9am16   WindDir3pm2   WindDir3pm3   WindDir3pm4   WindDir3pm5 
+    1.0030464     0.9651548     1.0689012     1.0222071     0.9849462     1.0155805 
+  WindDir3pm6   WindDir3pm7   WindDir3pm8   WindDir3pm9  WindDir3pm10  WindDir3pm11 
+    1.0233631     1.0522292     1.0443827     1.0631006     1.0870753     1.0645232 
+ WindDir3pm12  WindDir3pm13  WindDir3pm14  WindDir3pm15  WindDir3pm16  WindSpeed9am 
+    1.0473727     1.0805074     1.0236491     1.0343357     1.0257079     0.9988945 
+ WindSpeed3pm   Humidity9am   Humidity3pm   Pressure9am   Pressure3pm      Cloud9am 
+    0.9992502     1.0004492     1.0054577     1.0109921     0.9815362     0.9946094 
+     Cloud3pm       Temp9am       Temp3pm    RainToday1 
+    1.0275270     1.0025490     0.9991154     1.3243969 
+> with(logit, null.deviance - deviance)
+[1] 2410.313
+> distPred <- plogis(predict(logit, testData))  # predict distance
+> library(InformationValue)
+> optCutOff <- optimalCutoff(testData$RainTomorrow, distPred)[1] 
+> optCutOff
+[1] 0.6598881
+> misClassError(testData$RainTomorrow, distPred, threshold = optCutOff)
+[1] 0.136
+> library(MLmetrics)
+> testData$RainTomorrow <- factor(testData$RainTomorrow)
+> distPred <- ifelse(distPred < optCutOff, 0 ,1)
+> distPred<-factor(distPred)
+> # getting acuracy, ROC, AUC, RECALL, PRECISION AND F VALUES
+> plotROC(testData$RainTomorrow, as.numeric(distPred))
+> AUC(testData$RainTomorrow, distPred)
+[1] 0.8132359
+> recall(testData$RainTomorrow, distPred)
+[1] 0.8865926
+> precision(testData$RainTomorrow, distPred)
+[1] 0.9491937
+> F_meas(testData$RainTomorrow, distPred)
+[1] 0.9168258
+> 
+> confusionMatrix(testData$RainTomorrow, distPred)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction     0     1
+         0 27370  1465
+         1  3501  4167
+                                          
+               Accuracy : 0.864           
+                 95% CI : (0.8604, 0.8675)
+    No Information Rate : 0.8457          
+    P-Value [Acc > NIR] : < 2.2e-16       
+                                          
+                  Kappa : 0.5458          
+                                          
+ Mcnemar's Test P-Value : < 2.2e-16       
+                                          
+            Sensitivity : 0.8866          
+            Specificity : 0.7399          
+         Pos Pred Value : 0.9492          
+         Neg Pred Value : 0.5434          
+             Prevalence : 0.8457          
+         Detection Rate : 0.7498          
+   Detection Prevalence : 0.7899          
+      Balanced Accuracy : 0.8132          
+                                          
+       'Positive' Class : 0               
+                                          
+> end_time <- Sys.time()
+> #getting time difference
+> end_time - start_time
+Time difference of 2.338473 secs
+> 
+> 
+> ##################################################################
+> start_time <- Sys.time()
+> #apply naive bayes algorithm
+> trainingData$RainTomorrow <- factor(trainingData$RainTomorrow)
+> nb_rain<-naive_bayes(RainTomorrow~.,data=trainingData)
+Warning message:
+naive_bayes(): Feature RainToday - zero probabilities are present. Consider Laplace smoothing. 
+> nb_pred<-predict(nb_rain,testData)
+Warning message:
+predict.naive_bayes(): More features in the newdata are provided as there are probability tables in the object. Calculation is performed based on features to be found in the tables. 
+> summary(nb_rain)
+
+==================================== Naive Bayes ==================================== 
+ 
+- Call: naive_bayes.formula(formula = RainTomorrow ~ ., data = trainingData) 
+- Laplace: 0 
+- Classes: 2 
+- Samples: 19882 
+- Features: 21 
+- Conditional distributions: 
+    - Bernoulli: 1
+    - Categorical: 4
+    - Gaussian: 16
+- Prior probabilities: 
+    - 0: 0.4245
+    - 1: 0.5755
+
+------------------------------------------------------------------------------------- 
+> 
+> # getting acuracy, ROC, AUC, RECALL, PRECISION AND F VALUES
+> plotROC(testData$RainTomorrow, as.numeric(nb_pred))
+> AUC(testData$RainTomorrow, nb_pred)
+[1] 0.738813
+> recall(testData$RainTomorrow, nb_pred)
+[1] 0.8865385
+> precision(testData$RainTomorrow, nb_pred)
+[1] 0.8953008
+> F_meas(testData$RainTomorrow, nb_pred)
+[1] 0.8908981
+> # getting the confusion matrix and stastics
+> confusionMatrix(testData$RainTomorrow, nb_pred)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction     0     1
+         0 25816  3019
+         1  3304  4364
+                                          
+               Accuracy : 0.8268          
+                 95% CI : (0.8229, 0.8307)
+    No Information Rate : 0.7977          
+    P-Value [Acc > NIR] : < 2.2e-16       
+                                          
+                  Kappa : 0.4708          
+                                          
+ Mcnemar's Test P-Value : 0.0003549       
+                                          
+            Sensitivity : 0.8865          
+            Specificity : 0.5911          
+         Pos Pred Value : 0.8953          
+         Neg Pred Value : 0.5691          
+             Prevalence : 0.7977          
+         Detection Rate : 0.7072          
+   Detection Prevalence : 0.7899          
+      Balanced Accuracy : 0.7388          
+                                          
+       'Positive' Class : 0               
+                                          
+> end_time <- Sys.time()
+> #getting time difference
+> end_time - start_time
+Time difference of 1.492251 secs
+> ######################################################################
+> #apply decision tree alogorithm
+> start_time <- Sys.time()
+> 
+> # Conditional partitioning is implemented in the "ctree" method
+> rtree_fit2 <- ctree(trainingData$RainTomorrow ~ ., 
++                     trainingData) 
+> plot(rtree_fit2)
+> summary(rtree_fit2)
+    Length      Class       Mode 
+         1 BinaryTree         S4 
+> 
+> # We used the fit tree from the train data and test with the test data
+> predicted= predict(rtree_fit2,testData)
+> 
+> summary(predicted)
+    0     1 
+23863 12640 
+> 
+> # getting acuracy, ROC, AUC, RECALL, PRECISION AND F VALUES
+> plotROC(testData$RainTomorrow, as.numeric(predicted))
+> AUC(testData$RainTomorrow, predicted)
+[1] 0.7168541
+> recall(testData$RainTomorrow, predicted)
+[1] 0.9401165
+> precision(testData$RainTomorrow, predicted)
+[1] 0.7780128
+> F_meas(testData$RainTomorrow, predicted)
+[1] 0.8514175
+> confusionMatrix(testData$RainTomorrow, predicted)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction     0     1
+         0 22434  6401
+         1  1429  6239
+                                          
+               Accuracy : 0.7855          
+                 95% CI : (0.7812, 0.7897)
+    No Information Rate : 0.6537          
+    P-Value [Acc > NIR] : < 2.2e-16       
+                                          
+                  Kappa : 0.4779          
+                                          
+ Mcnemar's Test P-Value : < 2.2e-16       
+                                          
+            Sensitivity : 0.9401          
+            Specificity : 0.4936          
+         Pos Pred Value : 0.7780          
+         Neg Pred Value : 0.8136          
+             Prevalence : 0.6537          
+         Detection Rate : 0.6146          
+   Detection Prevalence : 0.7899          
+      Balanced Accuracy : 0.7169          
+                                          
+       'Positive' Class : 0               
+                                          
+> end_time <- Sys.time()
+> #getting time difference
+> end_time - start_time
+Time difference of 6.458173 secs
+> 
+> formulas <- as.formula(trainingData$RainTomorrow ~ .)
+> #tree construction based on information gain
+> tree = rpart(formulas, data=trainingData, method = 'class', parms = list(split = "information"))
+> rpart.plot(tree)
+> ########################################################################
+> # Fitting K-NN to the Training set and Predicting the Test set results
+> start_time <- Sys.time()
+> library(class)
+> kn_pred = knn(train = trainingData,
++               test = testData,
++               cl = trainingData$RainTomorrow,
++               k = 5,
++               prob = TRUE)
+> 
+> 
+> # getting acuracy, ROC, AUC, RECALL, PRECISION AND F VALUES
+> plotROC(testData$RainTomorrow, as.numeric(kn_pred))
+> AUC(testData$RainTomorrow, kn_pred)
+[1] 0.7259961
+> recall(testData$RainTomorrow, kn_pred)
+[1] 0.9458781
+> precision(testData$RainTomorrow, kn_pred)
+[1] 0.7842899
+> F_meas(testData$RainTomorrow, kn_pred)
+[1] 0.8575383
+> 
+> #Confusion matrix   
+> knn_confusion<-confusionMatrix(factor(kn_pred), factor(testData$RainTomorrow),positive="1")
+> knn_confusion
+Confusion Matrix and Statistics
+
+          Reference
+Prediction     0     1
+         0 22615  1294
+         1  6220  6374
+                                        
+               Accuracy : 0.7942        
+                 95% CI : (0.79, 0.7983)
+    No Information Rate : 0.7899        
+    P-Value [Acc > NIR] : 0.02408       
+                                        
+                  Kappa : 0.4981        
+                                        
+ Mcnemar's Test P-Value : < 2e-16       
+                                        
+            Sensitivity : 0.8312        
+            Specificity : 0.7843        
+         Pos Pred Value : 0.5061        
+         Neg Pred Value : 0.9459        
+             Prevalence : 0.2101        
+         Detection Rate : 0.1746        
+   Detection Prevalence : 0.3450        
+      Balanced Accuracy : 0.8078        
+                                        
+       'Positive' Class : 1             
+                                        
+> 
+> 
+> 
+> end_time <- Sys.time()
+> #getting time difference
+> end_time - start_time
+Time difference of 16.51741 secs
+> #############################################################################
+> # svm
+> start_time <- Sys.time()
+> library(e1071)
+> svmfit = svm(formula = RainTomorrow ~ .,
++              data = trainingData,
++              type = 'C-classification',
++              kernel = 'linear')
+> 
+> # Predicting the Test set results
+> y_pred_svm = predict(svmfit, newdata = testData)
+> 
+> 
+> # getting acuracy, ROC, AUC, RECALL, PRECISION AND F VALUES
+> plotROC(testData$RainTomorrow, as.numeric(y_pred_svm))
+> AUC(testData$RainTomorrow, y_pred_svm)
+[1] 0.7445809
+> recall(testData$RainTomorrow, y_pred_svm)
+[1] 0.9372746
+> precision(testData$RainTomorrow, y_pred_svm)
+[1] 0.8291313
+> F_meas(testData$RainTomorrow, y_pred_svm)
+[1] 0.8798925
+> 
+> # Making the Confusion Matrix and stastics
+> confusionMatrix(testData$RainTomorrow, y_pred_svm)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction     0     1
+         0 23908  4927
+         1  1600  6068
+                                          
+               Accuracy : 0.8212          
+                 95% CI : (0.8172, 0.8251)
+    No Information Rate : 0.6988          
+    P-Value [Acc > NIR] : < 2.2e-16       
+                                          
+                  Kappa : 0.5352          
+                                          
+ Mcnemar's Test P-Value : < 2.2e-16       
+                                          
+            Sensitivity : 0.9373          
+            Specificity : 0.5519          
+         Pos Pred Value : 0.8291          
+         Neg Pred Value : 0.7913          
+             Prevalence : 0.6988          
+         Detection Rate : 0.6550          
+   Detection Prevalence : 0.7899          
+      Balanced Accuracy : 0.7446          
+                                          
+       'Positive' Class : 0               
+                                          
+> end_time <- Sys.time()
+> #getting time difference
+> end_time - start_time
+Time difference of 1.045631 mins
+> ###############################################################################
+> 
+> ############ ensemble methods
+> #Taking average of predictions
+> predicted_dt<-predicted
+> library(varhandle)
+> testData$pred_avg<-(unfactor(distPred)+unfactor(predicted_dt)+unfactor(kn_pred)+unfactor(nb_pred)+unfactor(y_pred_svm))/5
+> 
+> #Splitting into binary classes at 0.5
+> testData$pred_avg<-as.factor(ifelse(testData$pred_avg>0.5,1, 0))
+> confusionMatrix(testData$RainTomorrow, testData$pred_avg)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction     0     1
+         0 25329  3506
+         1  2030  5638
+                                         
+               Accuracy : 0.8483         
+                 95% CI : (0.8446, 0.852)
+    No Information Rate : 0.7495         
+    P-Value [Acc > NIR] : < 2.2e-16      
+                                         
+                  Kappa : 0.5732         
+                                         
+ Mcnemar's Test P-Value : < 2.2e-16      
+                                         
+            Sensitivity : 0.9258         
+            Specificity : 0.6166         
+         Pos Pred Value : 0.8784         
+         Neg Pred Value : 0.7353         
+             Prevalence : 0.7495         
+         Detection Rate : 0.6939         
+   Detection Prevalence : 0.7899         
+      Balanced Accuracy : 0.7712         
+                                         
+       'Positive' Class : 0              
+                                         
+> # getting acuracy, ROC, AUC, RECALL, PRECISION AND F VALUES
+> plotROC(testData$RainTomorrow, as.numeric(testData$pred_avg))
+> AUC(testData$RainTomorrow, testData$pred_avg)
+[1] 0.7711903
+> recall(testData$RainTomorrow, testData$pred_avg)
+[1] 0.9258014
+> precision(testData$RainTomorrow, testData$pred_avg)
+[1] 0.8784117
+> F_meas(testData$RainTomorrow, testData$pred_avg)
+[1] 0.9014841
+> 
+> # majority voting
+> #The majority vote
+> # navie bayes, svm model, logistic regression selected for majority voting
+> testData$pred_majority<-as.factor(ifelse(unfactor(distPred)==1 & unfactor(nb_pred)==1,1,
++                                          ifelse(unfactor(distPred)==1 & unfactor(y_pred_svm)==1,1,
++                                                 ifelse(unfactor(nb_pred)==1 & unfactor(y_pred_svm)==1,1,
++                                                        ifelse(unfactor(nb_pred)==1 & unfactor(y_pred_svm)==1 &unfactor(distPred) == 1,1,0)))))
+> confusionMatrix(testData$RainTomorrow, testData$pred_majority)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction     0     1
+         0 26265  2570
+         1  2897  4771
+                                          
+               Accuracy : 0.8502          
+                 95% CI : (0.8465, 0.8539)
+    No Information Rate : 0.7989          
+    P-Value [Acc > NIR] : < 2.2e-16       
+                                          
+                  Kappa : 0.5415          
+                                          
+ Mcnemar's Test P-Value : 1.038e-05       
+                                          
+            Sensitivity : 0.9007          
+            Specificity : 0.6499          
+         Pos Pred Value : 0.9109          
+         Neg Pred Value : 0.6222          
+             Prevalence : 0.7989          
+         Detection Rate : 0.7195          
+   Detection Prevalence : 0.7899          
+      Balanced Accuracy : 0.7753          
+                                          
+       'Positive' Class : 0               
+                                          
+> 
+> # getting acuracy, ROC, AUC, RECALL, PRECISION AND F VALUES
+> plotROC(testData$RainTomorrow, as.numeric(testData$pred_majority))
+> AUC(testData$RainTomorrow, testData$pred_majority)
+[1] 0.7752849
+> recall(testData$RainTomorrow, testData$pred_majority)
+[1] 0.9006584
+> precision(testData$RainTomorrow, testData$pred_majority)
+[1] 0.9108722
+> F_meas(testData$RainTomorrow, testData$pred_majority)
+[1] 0.9057365
