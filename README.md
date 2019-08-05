@@ -1,4 +1,4 @@
-predict rain in australia
+predict rain in australia:
 The most important features are analyzed using PCA method and those are Max Temp, Evaporation, Sunshine, Pressure9am, Temp3pm, Rain Today, Rain Tomorrow
 
 
